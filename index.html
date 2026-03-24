@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Inventory Master Pro v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+@font-face{font-family:'Noori Nastaliq';src:url('https://cdn.jsdelivr.net/gh/AhmadFCheema/Fonts-Urdu@main/Jameel%20Noori%20Nastaleeq.woff2') format('woff2');font-display:swap}
+:root{
+  --excel-green:#217346;--excel-green-light:#33916B;--excel-green-dark:#185C38;
+  --excel-toolbar:#E6E6E6;--excel-toolbar-border:#C6C6C6;
+  --cell-border:#D4D4D4;--cell-bg:#FFFFFF;--cell-header:#F0F0F0;
+  --cell-selected:#D6E4F0;--cell-hover:#EBF1F7;
+  --text:#1A1A1A;--text2:#555;--text3:#888;
+  --blue:#2B579A;--red:#C00000;--orange:#ED7D31;--green-val:#548235;
+  --font:'Segoe UI','Calibri',sans-serif;
+  --font-ur:'Noori Nastaliq','Noto Nastaliq Urdu',Urdu,serif;
+  --font-ar:'Noto Sans Arabic',sans-serif;
+  --mono:'Roboto Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#E8E8E8;color:var(--text);font-size:13px;min-height:100vh}
+[data-lang="ur"] body,[data-lang="ur"] .sheet-tab,[data-lang="ur"] .ribbon-btn,[data-lang="ur"] th,[data-lang="ur"] td,[data-lang="ur"] label,[data-lang="ur"] .form-control,[data-lang="ur"] .cell-label,[data-lang="ur"] .fx-bar span,[data-lang="ur"] .modal-header h3,[data-lang="ur"] .modal-body label{font-family:var(--font-ur)!important;line-height:2!important}
+[data-lang="ur"] .cell-value{font-family:var(--mono)!important;line-height:1.3!important}
+[data-lang="ar"] body{font-family:var(--font-ar)}
+
+/* ── TITLE BAR ── */
+.title-bar{background:var(--excel-green);color:#fff;height:32px;display:flex;align-items:center;padding:0 12px;font-size:12px;font-weight:600;gap:8px}
+.title-bar .mdi{font-size:16px;opacity:.8}
+.title-bar .badges{margin-left:auto;display:flex;gap:8px}
+[dir="rtl"] .title-bar .badges{margin-left:0;margin-right:auto}
+.title-bar .badge{background:rgba(255,255,255,.2);padding:2px 10px;border-radius:3px;font-size:11px}
+
+/* ── RIBBON ── */
+.ribbon{background:var(--excel-toolbar);border-bottom:1px solid var(--excel-toolbar-border);display:flex;flex-wrap:wrap;gap:0}
+.ribbon-group{display:flex;align-items:center;gap:2px;padding:6px 12px;border-right:1px solid var(--excel-toolbar-border);position:relative}
+[dir="rtl"] .ribbon-group{border-right:none;border-left:1px solid var(--excel-toolbar-border)}
+.ribbon-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;border:none;background:transparent;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;color:var(--text);transition:.15s;min-width:52px}
+.ribbon-btn:hover{background:#D0D0D0}
+.ribbon-btn.active{background:#C8DFCA;box-shadow:inset 0 -2px 0 var(--excel-green)}
+.ribbon-btn .mdi{font-size:20px;color:var(--excel-green)}
+
+/* ── FORMULA BAR ── */
+.fx-bar{background:#fff;border-bottom:1px solid var(--cell-border);height:28px;display:flex;align-items:center;padding:0 8px;font-size:12px}
+.fx-bar .cell-ref{background:var(--cell-header);border:1px solid var(--cell-border);padding:2px 8px;width:80px;text-align:center;font-weight:600;font-size:11px}
+.fx-bar .fx-icon{padding:0 8px;color:var(--text3);font-weight:700;font-style:italic}
+.fx-bar span{flex:1;color:var(--text2)}
+
+/* ── SHEET AREA ── */
+.sheet-area{background:#fff;margin:0 2px;min-height:calc(100vh - 96px);overflow:auto}
+
+/* ── GRID TABLE ── */
+.grid-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.grid-table th,.grid-table td{border:1px solid var(--cell-border);padding:6px 10px;text-align:inherit;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid-table th{background:var(--cell-header);color:var(--text2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;z-index:5}
+.grid-table td{font-size:13px}
+.grid-table tr:hover td{background:var(--cell-hover)}
+.grid-table .row-num{background:var(--cell-header);color:var(--text3);text-align:center;width:40px;font-size:11px;font-weight:600}
+.cell-value{font-family:var(--mono);font-weight:500}
+.cell-green{color:var(--green-val);font-weight:700}
+.cell-red{color:var(--red);font-weight:700}
+.cell-blue{color:var(--blue);font-weight:700}
+.cell-tag{display:inline-block;background:#E2EFDA;color:var(--green-val);padding:1px 8px;border-radius:2px;font-size:11px;font-weight:600}
+.cell-tag.orange{background:#FCE4CC;color:#C65911}
+.cell-tag.red{background:#FBE5E5;color:var(--red)}
+
+/* ── KPI ROW (Excel merged cells style) ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--cell-border);margin:8px}
+.kpi-cell{border-right:1px solid var(--cell-border);padding:12px 16px;background:#fff}
+.kpi-cell:last-child{border-right:none}
+.kpi-cell .cell-label{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);letter-spacing:.5px;margin-bottom:4px}
+.kpi-cell .cell-value{font-size:22px;font-weight:700;font-family:var(--mono)}
+.kpi-cell.green-border{border-top:3px solid var(--green-val)}
+.kpi-cell.blue-border{border-top:3px solid var(--blue)}
+.kpi-cell.orange-border{border-top:3px solid var(--orange)}
+.kpi-cell.red-border{border-top:3px solid var(--red)}
+
+/* ── CHARTS AREA ── */
+.charts-row{display:grid;grid-template-columns:3fr 2fr;gap:0;margin:8px;border:1px solid var(--cell-border)}
+.chart-cell{padding:12px;background:#fff;border-right:1px solid var(--cell-border)}
+.chart-cell:last-child{border-right:none}
+.chart-cell h4{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:8px;letter-spacing:.3px}
+.chart-container{height:240px;position:relative}
+
+/* ── FORMS ── */
+.form-area{margin:8px;padding:12px;background:#fff;border:1px solid var(--cell-border)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;align-items:end}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;font-weight:600;color:var(--text2)}
+.form-control{padding:4px 8px;border:1px solid var(--cell-border);font-family:inherit;font-size:13px;background:#fff;color:var(--text);height:28px}
+.form-control:focus{outline:none;border-color:var(--excel-green);box-shadow:0 0 0 2px rgba(33,115,70,.15)}
+
+/* ── SHEET TABS ── */
+.sheet-tabs{background:var(--excel-toolbar);border-top:1px solid var(--excel-toolbar-border);height:28px;display:flex;align-items:stretch;padding:0 8px;position:fixed;bottom:0;left:0;right:0;z-index:50}
+.sheet-tab{padding:0 16px;border:1px solid var(--excel-toolbar-border);border-bottom:none;background:#fff;font-family:inherit;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;margin-top:4px;border-radius:3px 3px 0 0;color:var(--text);transition:.15s}
+.sheet-tab:hover{background:#F0F0F0}
+.sheet-tab.active{background:#fff;border-bottom:2px solid #fff;font-weight:700;color:var(--excel-green);margin-top:2px}
+.sheet-tab .mdi{font-size:14px}
+
+/* ── PAGES ── */
+.page{display:none}.page.active{display:block}
+.section-header{background:var(--cell-header);border:1px solid var(--cell-border);padding:6px 12px;margin:8px 8px 0;font-size:12px;font-weight:700;color:var(--excel-green);display:flex;align-items:center;gap:8px}
+
+/* ── BUTTONS ── */
+.btn-excel{display:inline-flex;align-items:center;gap:4px;padding:4px 14px;border:1px solid var(--cell-border);background:var(--cell-header);font-family:inherit;font-size:12px;cursor:pointer;border-radius:2px;color:var(--text);height:28px;transition:.15s}
+.btn-excel:hover{background:#D8D8D8}
+.btn-excel.primary{background:var(--excel-green);color:#fff;border-color:var(--excel-green-dark)}
+.btn-excel.primary:hover{background:var(--excel-green-light)}
+.btn-excel.danger{background:#FBE5E5;color:var(--red);border-color:#E8C8C8}
+.btn-excel.danger:hover{background:#F5D0D0}
+.btn-icon{width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:2px}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:#fff;border:1px solid var(--cell-border);width:90%;max-width:480px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.modal-header{background:var(--excel-green);color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600}
+.modal-header button{background:none;border:none;color:#fff;font-size:18px;cursor:pointer}
+.modal-body{padding:16px}.modal-body .form-group{margin-bottom:12px}
+.modal-footer{padding:8px 16px;background:var(--cell-header);border-top:1px solid var(--cell-border);display:flex;justify-content:flex-end;gap:8px}
+
+/* ── SETTINGS ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:8px;border:1px solid var(--cell-border)}
+.settings-cell{padding:16px;background:#fff;border-right:1px solid var(--cell-border)}
+.settings-cell:last-child{border-right:none}
+.settings-cell h4{font-size:12px;font-weight:700;color:var(--excel-green);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}.kpi-cell:nth-child(2){border-right:none}
+  .charts-row{grid-template-columns:1fr}.chart-cell{border-right:none;border-bottom:1px solid var(--cell-border)}
+  .chart-container{height:300px}
+  .settings-grid{grid-template-columns:1fr}.settings-cell{border-right:none;border-bottom:1px solid var(--cell-border)}
+  .ribbon-group{padding:4px 6px}.ribbon-btn{min-width:40px;font-size:10px}
+  .ribbon-btn span:not(.mdi){display:none}
+  .grid-table th,.grid-table td{padding:5px 6px;font-size:12px;white-space:normal}
+  .grid-table .row-num{width:28px}
+  .btn-excel.btn-icon{width:28px;height:28px}
+  .form-grid{grid-template-columns:1fr}
+  .sheet-tab span:not(.mdi){display:none}.sheet-tab{padding:0 10px}
+  .title-bar{font-size:11px;height:28px}
+  .fx-bar{font-size:11px}
+  td .btn-excel{margin-bottom:2px}
+}
+@media(max-width:480px){
+  .kpi-row{grid-template-columns:1fr}.kpi-cell{border-right:none;border-bottom:1px solid var(--cell-border)}
+  .kpi-cell .cell-value{font-size:18px}
+  .chart-container{height:250px}
+  .section-header{font-size:11px;padding:5px 8px}
+  .charts-row{margin:4px}.kpi-row{margin:4px}
+}
+</style>
+</head>
+<body>
+
+<!-- TITLE BAR (Excel green bar) -->
+<div class="title-bar">
+  <span class="mdi mdi-microsoft-excel"></span>
+  <span id="txt-app-name">Inventory Master Pro</span> — <span id="txt-tagline">v2.0</span>
+  <div class="badges"><div id="currency-display" class="badge">USD ($)</div><div id="language-display" class="badge">English</div></div>
+</div>
+
+<!-- RIBBON (Excel toolbar) -->
+<div class="ribbon" id="ribbon">
+  <div class="ribbon-group">
+    <button class="ribbon-btn active" onclick="switchPage('dashboard',this)" id="rb-dash"><span class="mdi mdi-view-dashboard"></span><span id="txt-nav-dash">Dashboard</span></button>
+    <button class="ribbon-btn" onclick="switchPage('products',this)" id="rb-prod"><span class="mdi mdi-package-variant-closed"></span><span id="txt-nav-products">Products</span></button>
+    <button class="ribbon-btn" onclick="switchPage('stockin',this)" id="rb-si"><span class="mdi mdi-arrow-down-bold-box"></span><span id="txt-nav-stockin">Stock In</span></button>
+    <button class="ribbon-btn" onclick="switchPage('sales',this)" id="rb-sales"><span class="mdi mdi-cash-register"></span><span id="txt-nav-sales">Sales</span></button>
+  </div>
+  <div class="ribbon-group">
+    <button class="ribbon-btn" onclick="switchPage('sellers',this)" id="rb-sell"><span class="mdi mdi-account-group"></span><span id="txt-nav-sellers">Sellers</span></button>
+    <button class="ribbon-btn" onclick="switchPage('settings',this)" id="rb-set"><span class="mdi mdi-cog"></span><span id="txt-nav-settings">Settings</span></button>
+  </div>
+  <div class="ribbon-group">
+    <button class="ribbon-btn" onclick="window.print()"><span class="mdi mdi-printer"></span><span id="txt-btn-report">Print</span></button>
+  </div>
+</div>
+
+<!-- FORMULA BAR -->
+<div class="fx-bar">
+  <span class="cell-ref" id="active-cell">A1</span>
+  <span class="fx-icon">fx</span>
+  <span id="fx-text">Inventory Master Pro — Real-time inventory and sales management</span>
+</div>
+
+<!-- SHEET AREA -->
+<div class="sheet-area" style="padding-bottom:36px">
+
+  <!-- ══ DASHBOARD ══ -->
+  <div class="page active" id="page-dashboard">
+    <div class="section-header"><span class="mdi mdi-chart-box"></span> <span id="txt-dash-title">Dashboard Overview</span></div>
+    <div class="kpi-row">
+      <div class="kpi-cell blue-border"><div class="cell-label" id="txt-kpi-products">Total Products</div><div class="cell-value cell-blue" id="val-total-products">0</div></div>
+      <div class="kpi-cell green-border"><div class="cell-label" id="txt-kpi-sales">Total Sales</div><div class="cell-value cell-green" id="val-total-sales">$0</div></div>
+      <div class="kpi-cell orange-border"><div class="cell-label" id="txt-kpi-profit">Total Profit</div><div class="cell-value" style="color:#ED7D31" id="val-total-profit">$0</div></div>
+      <div class="kpi-cell red-border"><div class="cell-label" id="txt-kpi-lowstock">Low Stock</div><div class="cell-value cell-red" id="val-low-stock">0</div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-cell"><h4 id="txt-chart-sales">Sales Performance</h4><div class="chart-container"><canvas id="salesChart"></canvas></div></div>
+      <div class="chart-cell"><h4 id="txt-chart-stock">Stock Overview</h4><div class="chart-container"><canvas id="stockChart"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- ══ PRODUCTS ══ -->
+  <div class="page" id="page-products">
+    <div class="section-header" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="mdi mdi-package-variant-closed"></span> <span id="txt-prod-title">Products</span></div><button class="btn-excel primary" onclick="openProductModal()"><span class="mdi mdi-plus"></span> <span id="txt-btn-add-prod">Add Product</span></button></div>
+    <div style="margin:0 8px;overflow-x:auto"><table class="grid-table"><thead><tr><th style="width:40px">#</th><th id="th-id" style="width:70px">ID</th><th id="th-name">Name</th><th id="th-cat">Category</th><th id="th-pprice">Purchase</th><th id="th-sprice">Sale</th><th id="th-stock" style="width:70px">Stock</th><th id="th-actions" style="width:100px">Actions</th></tr></thead><tbody id="product-list"></tbody></table></div>
+  </div>
+
+  <!-- ══ STOCK IN ══ -->
+  <div class="page" id="page-stockin">
+    <div class="section-header"><span class="mdi mdi-arrow-down-bold-box"></span> <span id="txt-si-title">Stock In</span></div>
+    <div class="form-area"><div class="form-grid">
+      <div class="form-group"><label id="lbl-si-product">Product</label><select class="form-control" id="si_product"></select></div>
+      <div class="form-group"><label id="lbl-si-qty">Quantity</label><input type="number" class="form-control" id="si_qty" min="1"></div>
+      <div class="form-group"><label>&nbsp;</label><button class="btn-excel primary" onclick="addStockIn()"><span class="mdi mdi-plus"></span> <span id="txt-btn-add-stock">Add Stock</span></button></div>
+    </div></div>
+    <div style="margin:0 8px;overflow-x:auto"><table class="grid-table"><thead><tr><th style="width:40px">#</th><th>Date</th><th>Product</th><th>Qty</th></tr></thead><tbody id="stockin-list"></tbody></table></div>
+  </div>
+
+  <!-- ══ SALES ══ -->
+  <div class="page" id="page-sales">
+    <div class="section-header"><span class="mdi mdi-cash-register"></span> <span id="txt-sale-title">Sales</span></div>
+    <div class="form-area"><div class="form-grid">
+      <div class="form-group"><label>Product</label><select class="form-control" id="sale_product" onchange="fillSalePrice()"></select></div>
+      <div class="form-group"><label>Qty</label><input type="number" class="form-control" id="sale_qty" min="1" oninput="calcSaleTotal()"></div>
+      <div class="form-group"><label>Sale Price</label><input type="number" class="form-control" id="sale_price" oninput="calcSaleTotal()"></div>
+      <div class="form-group"><label>Seller</label><select class="form-control" id="sale_seller"></select></div>
+      <div class="form-group"><label>&nbsp;</label><button class="btn-excel primary" onclick="addSale()"><span class="mdi mdi-cash-register"></span> Record</button></div>
+    </div></div>
+    <div style="margin:0 8px;overflow-x:auto"><table class="grid-table"><thead><tr><th style="width:40px">#</th><th>Date</th><th>Product</th><th>Qty</th><th>Price</th><th>Seller</th><th>Total</th><th>Profit</th></tr></thead><tbody id="sales-list"></tbody></table></div>
+  </div>
+
+  <!-- ══ SELLERS ══ -->
+  <div class="page" id="page-sellers">
+    <div class="section-header" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="mdi mdi-account-group"></span> <span id="txt-sell-title">Sellers</span></div><button class="btn-excel primary" onclick="openSellerModal()"><span class="mdi mdi-plus"></span> <span id="txt-btn-add-seller">Add Seller</span></button></div>
+    <div style="margin:0 8px;overflow-x:auto"><table class="grid-table"><thead><tr><th style="width:40px">#</th><th id="th-sname">Name</th><th id="th-smobile">Mobile</th><th id="th-stotal">Total Sales</th><th id="th-sactions" style="width:100px">Actions</th></tr></thead><tbody id="seller-list"></tbody></table></div>
+  </div>
+
+  <!-- ══ SETTINGS ══ -->
+  <div class="page" id="page-settings">
+    <div class="section-header"><span class="mdi mdi-cog"></span> <span id="txt-set-title">Settings</span></div>
+    <div class="settings-grid">
+      <div class="settings-cell"><h4><span class="mdi mdi-translate"></span> <span id="txt-set-lang">Language</span></h4><select class="form-control" id="set-lang" onchange="updateLocale()" style="width:100%"><option value="en">English (Default)</option><option value="ur">اردو (Urdu)</option><option value="ar">العربية (Arabic)</option></select></div>
+      <div class="settings-cell"><h4><span class="mdi mdi-cash"></span> <span id="txt-set-curr">Currency</span></h4><select class="form-control" id="set-curr" onchange="updateCurrency()" style="width:100%"><option value="USD">USD ($)</option><option value="PKR">PKR (Rs)</option><option value="SAR">SAR (﷼)</option><option value="AED">AED (د.إ)</option></select></div>
+    </div>
+  </div>
+</div>
+
+<!-- SHEET TABS (Excel bottom tabs) -->
+<div class="sheet-tabs">
+  <button class="sheet-tab active" onclick="switchPage('dashboard',document.getElementById('rb-dash'))"><span class="mdi mdi-view-dashboard"></span> <span id="tab-dash">Dashboard</span></button>
+  <button class="sheet-tab" onclick="switchPage('products',document.getElementById('rb-prod'))"><span class="mdi mdi-package-variant-closed"></span> <span id="tab-prod">Products</span></button>
+  <button class="sheet-tab" onclick="switchPage('stockin',document.getElementById('rb-si'))"><span class="mdi mdi-arrow-down-bold-box"></span> <span id="tab-si">Stock In</span></button>
+  <button class="sheet-tab" onclick="switchPage('sales',document.getElementById('rb-sales'))"><span class="mdi mdi-cash-register"></span> <span id="tab-sales">Sales</span></button>
+  <button class="sheet-tab" onclick="switchPage('sellers',document.getElementById('rb-sell'))"><span class="mdi mdi-account-group"></span> <span id="tab-sell">Sellers</span></button>
+  <button class="sheet-tab" onclick="switchPage('settings',document.getElementById('rb-set'))"><span class="mdi mdi-cog"></span> <span id="tab-set">Settings</span></button>
+</div>
+
+<!-- Product Modal -->
+<div class="modal-overlay" id="modal-product"><div class="modal"><div class="modal-header"><h3 id="modal-prod-title">Add / Edit Product</h3><button onclick="closeModals()">✕</button></div><div class="modal-body"><input type="hidden" id="p-index">
+  <div class="form-group"><label id="lbl-pname">Name</label><input type="text" class="form-control" id="p-name" style="width:100%"></div>
+  <div class="form-group"><label id="lbl-pcat">Category</label><input type="text" class="form-control" id="p-cat" style="width:100%"></div>
+  <div class="form-group"><label id="lbl-pprice">Purchase Price</label><input type="number" class="form-control" id="p-purchase" style="width:100%"></div>
+  <div class="form-group"><label id="lbl-sprice">Sale Price</label><input type="number" class="form-control" id="p-sale" style="width:100%"></div>
+  <div class="form-group"><label id="lbl-pstock">Stock</label><input type="number" class="form-control" id="p-stock" style="width:100%"></div>
+</div><div class="modal-footer"><button class="btn-excel" onclick="closeModals()" id="btn-cancel">Cancel</button><button class="btn-excel primary" onclick="saveProduct()" id="btn-save">Save</button></div></div></div>
+
+<!-- Seller Modal -->
+<div class="modal-overlay" id="modal-seller"><div class="modal"><div class="modal-header"><h3 id="modal-sell-title">Add / Edit Seller</h3><button onclick="closeModals()">✕</button></div><div class="modal-body"><input type="hidden" id="s-index">
+  <div class="form-group"><label id="lbl-sname">Name</label><input type="text" class="form-control" id="s-name" style="width:100%"></div>
+  <div class="form-group"><label id="lbl-smobile">Mobile</label><input type="text" class="form-control" id="s-mobile" style="width:100%"></div>
+</div><div class="modal-footer"><button class="btn-excel" onclick="closeModals()" id="btn-cancel-s">Cancel</button><button class="btn-excel primary" onclick="saveSeller()" id="btn-save-s">Save</button></div></div></div>
+
+<script>
+var products=JSON.parse(localStorage.getItem('im_products'))||[
+  {name:'Laptop',cat:'Electronics',purchase:800,sale:1200,stock:15},
+  {name:'Smartphone',cat:'Electronics',purchase:400,sale:600,stock:25},
+  {name:'Wireless Mouse',cat:'Accessories',purchase:15,sale:35,stock:120},
+  {name:'USB-C Hub',cat:'Accessories',purchase:25,sale:55,stock:80},
+  {name:'Monitor 27"',cat:'Electronics',purchase:300,sale:450,stock:8}
+];
+var sellers=JSON.parse(localStorage.getItem('im_sellers'))||[
+  {name:'Usman Ali',mobile:'+92 300 1234567',sales:45000},
+  {name:'Ahmed Khan',mobile:'+92 321 7654321',sales:32000},
+  {name:'Sara Malik',mobile:'+92 333 9876543',sales:18500}
+];
+var stockInLog=JSON.parse(localStorage.getItem('im_stockin'))||[];
+var salesLog=JSON.parse(localStorage.getItem('im_sales'))||[];
+var currentLang=localStorage.getItem('im_lang')||'en';
+var currentCurr=localStorage.getItem('im_curr')||'USD';
+
+var T={
+  en:{appName:"Inventory Master Pro",tagline:"v2.0",menuMain:"Main",navDash:"Dashboard",navProducts:"Products",navStockin:"Stock In",navSales:"Sales",navSellers:"Sellers",navSettings:"Settings",dashTitle:"Dashboard Overview",kpiProducts:"Total Products",kpiSales:"Total Sales",kpiProfit:"Total Profit",kpiLow:"Low Stock",prodTitle:"Products",sellTitle:"Sellers",setTitle:"Settings",thId:"ID",thName:"Name",thCat:"Category",thPP:"Purchase",thSP:"Sale",thStock:"Stock",thAct:"Actions",btnReport:"Print",btnAddP:"Add Product",btnAddS:"Add Seller",setLang:"Language",setCurr:"Currency",cancel:"Cancel",save:"Save",lblPN:"Name",lblPC:"Category",lblPP:"Purchase Price",lblSP:"Sale Price",lblPS:"Stock",lblSN:"Name",lblSM:"Mobile",siTitle:"Stock In",saleTitle:"Sales",btnAddStock:"Add Stock",chartSales:"Sales Performance",chartStock:"Stock Overview",fxText:"Inventory Master Pro — Real-time inventory and sales management"},
+  ur:{appName:"انوینٹری ماسٹر پرو",tagline:"v2.0",menuMain:"مین مینو",navDash:"ڈیش بورڈ",navProducts:"مصنوعات",navStockin:"اسٹاک آمد",navSales:"فروخت",navSellers:"سیلرز",navSettings:"سیٹنگز",dashTitle:"ڈیش بورڈ کا جائزہ",kpiProducts:"کل مصنوعات",kpiSales:"کل فروخت",kpiProfit:"کل منافع",kpiLow:"کم اسٹاک",prodTitle:"مصنوعات",sellTitle:"سیلرز",setTitle:"سیٹنگز",thId:"آئی ڈی",thName:"نام",thCat:"کیٹیگری",thPP:"خریداری قیمت",thSP:"فروخت قیمت",thStock:"اسٹاک",thAct:"کارروائی",btnReport:"پرنٹ",btnAddP:"پروڈکٹ شامل کریں",btnAddS:"سیلر شامل کریں",setLang:"زبان",setCurr:"کرنسی",cancel:"منسوخ",save:"محفوظ کریں",lblPN:"پروڈکٹ کا نام",lblPC:"کیٹیگری",lblPP:"خریداری قیمت",lblSP:"فروخت قیمت",lblPS:"موجودہ اسٹاک",lblSN:"سیلر کا نام",lblSM:"موبائل نمبر",siTitle:"اسٹاک آمد",saleTitle:"فروخت",btnAddStock:"اسٹاک شامل کریں",chartSales:"فروخت کی کارکردگی",chartStock:"اسٹاک کا جائزہ",fxText:"انوینٹری ماسٹر پرو — انوینٹری اور فروخت کا انتظام"},
+  ar:{appName:"مدير المخزون برو",tagline:"v2.0",menuMain:"الرئيسية",navDash:"لوحة التحكم",navProducts:"المنتجات",navStockin:"توريد",navSales:"المبيعات",navSellers:"البائعين",navSettings:"الإعدادات",dashTitle:"نظرة عامة",kpiProducts:"إجمالي المنتجات",kpiSales:"إجمالي المبيعات",kpiProfit:"إجمالي الربح",kpiLow:"مخزون منخفض",prodTitle:"المنتجات",sellTitle:"البائعين",setTitle:"الإعدادات",thId:"معرف",thName:"الاسم",thCat:"الفئة",thPP:"سعر الشراء",thSP:"سعر البيع",thStock:"المخزون",thAct:"إجراءات",btnReport:"طباعة",btnAddP:"إضافة منتج",btnAddS:"إضافة بائع",setLang:"اللغة",setCurr:"العملة",cancel:"إلغاء",save:"حفظ",lblPN:"الاسم",lblPC:"الفئة",lblPP:"سعر الشراء",lblSP:"سعر البيع",lblPS:"المخزون",lblSN:"اسم البائع",lblSM:"رقم الجوال",siTitle:"توريد المخزون",saleTitle:"المبيعات",btnAddStock:"إضافة مخزون",chartSales:"أداء المبيعات",chartStock:"نظرة المخزون",fxText:"مدير المخزون — إدارة المخزون والمبيعات"}
+};
+var CURR={USD:{s:'$',p:'prefix'},PKR:{s:'Rs',p:'prefix'},SAR:{s:'﷼',p:'suffix'},AED:{s:'د.إ',p:'suffix'}};
+
+function fmt(v){var c=CURR[currentCurr];v=parseFloat(v||0).toLocaleString();return c.p==='prefix'?c.s+' '+v:v+' '+c.s}
+
+function updateLocale(){
+  currentLang=document.getElementById('set-lang').value;
+  localStorage.setItem('im_lang',currentLang);
+  var dir=(currentLang==='ur'||currentLang==='ar')?'rtl':'ltr';
+  document.documentElement.setAttribute('dir',dir);
+  document.documentElement.setAttribute('lang',currentLang);
+  document.documentElement.setAttribute('data-lang',currentLang);
+  var t=T[currentLang];
+  var map={'txt-app-name':'appName','txt-tagline':'tagline','txt-nav-dash':'navDash','txt-nav-products':'navProducts','txt-nav-stockin':'navStockin','txt-nav-sales':'navSales','txt-nav-sellers':'navSellers','txt-nav-settings':'navSettings','txt-dash-title':'dashTitle','txt-kpi-products':'kpiProducts','txt-kpi-sales':'kpiSales','txt-kpi-profit':'kpiProfit','txt-kpi-lowstock':'kpiLow','txt-prod-title':'prodTitle','txt-sell-title':'sellTitle','txt-set-title':'setTitle','th-id':'thId','th-name':'thName','th-cat':'thCat','th-pprice':'thPP','th-sprice':'thSP','th-stock':'thStock','th-actions':'thAct','txt-btn-report':'btnReport','txt-btn-add-prod':'btnAddP','txt-btn-add-seller':'btnAddS','txt-set-lang':'setLang','txt-set-curr':'setCurr','btn-cancel':'cancel','btn-save':'save','btn-cancel-s':'cancel','btn-save-s':'save','lbl-pname':'lblPN','lbl-pcat':'lblPC','lbl-pprice':'lblPP','lbl-sprice':'lblSP','lbl-pstock':'lblPS','lbl-sname':'lblSN','lbl-smobile':'lblSM','txt-si-title':'siTitle','txt-sale-title':'saleTitle','txt-btn-add-stock':'btnAddStock','txt-chart-sales':'chartSales','txt-chart-stock':'chartStock','fx-text':'fxText','tab-dash':'navDash','tab-prod':'navProducts','tab-si':'navStockin','tab-sales':'navSales','tab-sell':'navSellers','tab-set':'navSettings'};
+  for(var id in map){var el=document.getElementById(id);if(el)el.innerText=t[map[id]]}
+  document.getElementById('language-display').innerText=document.getElementById('set-lang').options[document.getElementById('set-lang').selectedIndex].text;
+  refreshAll();
+}
+function updateCurrency(){
+  currentCurr=document.getElementById('set-curr').value;
+  localStorage.setItem('im_curr',currentCurr);
+  document.getElementById('currency-display').innerText=currentCurr+' ('+CURR[currentCurr].s+')';
+  refreshAll();
+}
+function switchPage(id,btn){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.ribbon-btn').forEach(function(b){b.classList.remove('active')});
+  if(btn)btn.classList.add('active');
+  document.querySelectorAll('.sheet-tab').forEach(function(t){t.classList.remove('active')});
+  var tabs=document.querySelectorAll('.sheet-tab');
+  var idx={dashboard:0,products:1,stockin:2,sales:3,sellers:4,settings:5};
+  if(tabs[idx[id]])tabs[idx[id]].classList.add('active');
+  document.getElementById('active-cell').innerText=id.charAt(0).toUpperCase()+id.slice(1);
+  if(id==='stockin'||id==='sales')populateDropdowns();
+}
+function populateDropdowns(){
+  var sp=document.getElementById('si_product'),slp=document.getElementById('sale_product'),sls=document.getElementById('sale_seller');
+  if(sp){sp.innerHTML='<option value="">--</option>';products.forEach(function(p,i){sp.innerHTML+='<option value="'+i+'">'+p.name+'</option>'})}
+  if(slp){slp.innerHTML='<option value="">--</option>';products.forEach(function(p,i){slp.innerHTML+='<option value="'+i+'">'+p.name+'</option>'})}
+  if(sls){sls.innerHTML='<option value="">--</option>';sellers.forEach(function(s,i){sls.innerHTML+='<option value="'+i+'">'+s.name+'</option>'})}
+}
+function renderProducts(){
+  var c=document.getElementById('product-list');c.innerHTML='';
+  products.forEach(function(p,i){
+    var stockClass=p.stock<10?'cell-tag red':'cell-tag';
+    c.innerHTML+='<tr><td class="row-num">'+(i+1)+'</td><td><span class="cell-tag">P-'+String(i+1).padStart(3,'0')+'</span></td><td style="font-weight:600">'+p.name+'</td><td><span class="cell-tag orange">'+p.cat+'</span></td><td class="cell-value">'+fmt(p.purchase)+'</td><td class="cell-value cell-green">'+fmt(p.sale)+'</td><td class="cell-value" style="text-align:center"><span class="'+stockClass+'">'+p.stock+'</span></td><td><button class="btn-excel btn-icon" onclick="openProductModal('+i+')" title="Edit"><span class="mdi mdi-pencil" style="color:#217346"></span></button> <button class="btn-excel btn-icon danger" onclick="deleteProduct('+i+')" title="Delete"><span class="mdi mdi-delete"></span></button></td></tr>';
+  });
+}
+function openProductModal(i){
+  if(i===undefined)i=-1;
+  document.getElementById('modal-product').classList.add('active');
+  if(i>-1){document.getElementById('p-index').value=i;document.getElementById('p-name').value=products[i].name;document.getElementById('p-cat').value=products[i].cat;document.getElementById('p-purchase').value=products[i].purchase;document.getElementById('p-sale').value=products[i].sale;document.getElementById('p-stock').value=products[i].stock}
+  else{document.getElementById('p-index').value='';document.getElementById('p-name').value='';document.getElementById('p-cat').value='';document.getElementById('p-purchase').value='';document.getElementById('p-sale').value='';document.getElementById('p-stock').value=''}
+}
+function saveProduct(){
+  var i=document.getElementById('p-index').value;
+  var d={name:document.getElementById('p-name').value,cat:document.getElementById('p-cat').value,purchase:+document.getElementById('p-purchase').value,sale:+document.getElementById('p-sale').value,stock:+document.getElementById('p-stock').value};
+  if(!d.name)return;
+  if(i===''){products.push(d)}else{products[i]=d}
+  localStorage.setItem('im_products',JSON.stringify(products));closeModals();refreshAll();
+}
+function deleteProduct(i){if(confirm('Delete?')){products.splice(i,1);localStorage.setItem('im_products',JSON.stringify(products));refreshAll()}}
+function renderSellers(){
+  var c=document.getElementById('seller-list');c.innerHTML='';
+  sellers.forEach(function(s,i){
+    c.innerHTML+='<tr><td class="row-num">'+(i+1)+'</td><td style="font-weight:600">'+s.name+'</td><td class="cell-value">'+(s.mobile||'N/A')+'</td><td class="cell-value cell-green">'+fmt(s.sales||0)+'</td><td><button class="btn-excel btn-icon" onclick="openSellerModal('+i+')" title="Edit"><span class="mdi mdi-pencil" style="color:#217346"></span></button> <button class="btn-excel btn-icon danger" onclick="deleteSeller('+i+')" title="Delete"><span class="mdi mdi-delete"></span></button></td></tr>';
+  });
+}
+function openSellerModal(i){
+  if(i===undefined)i=-1;
+  document.getElementById('modal-seller').classList.add('active');
+  if(i>-1){document.getElementById('s-index').value=i;document.getElementById('s-name').value=sellers[i].name;document.getElementById('s-mobile').value=sellers[i].mobile||''}
+  else{document.getElementById('s-index').value='';document.getElementById('s-name').value='';document.getElementById('s-mobile').value=''}
+}
+function saveSeller(){
+  var i=document.getElementById('s-index').value,n=document.getElementById('s-name').value,m=document.getElementById('s-mobile').value;
+  if(!n)return;
+  if(i===''){sellers.push({name:n,mobile:m,sales:0})}else{sellers[i].name=n;sellers[i].mobile=m}
+  localStorage.setItem('im_sellers',JSON.stringify(sellers));closeModals();refreshAll();
+}
+function deleteSeller(i){if(confirm('Delete?')){sellers.splice(i,1);localStorage.setItem('im_sellers',JSON.stringify(sellers));refreshAll()}}
+function addStockIn(){
+  var pi=document.getElementById('si_product').value,qty=+document.getElementById('si_qty').value;
+  if(pi===''||!qty)return;products[pi].stock+=qty;
+  stockInLog.push({date:new Date().toLocaleDateString(),product:products[pi].name,qty:qty});
+  localStorage.setItem('im_products',JSON.stringify(products));localStorage.setItem('im_stockin',JSON.stringify(stockInLog));
+  document.getElementById('si_qty').value='';refreshAll();
+}
+function renderStockIn(){
+  var c=document.getElementById('stockin-list');c.innerHTML='';
+  stockInLog.slice(-20).reverse().forEach(function(s,i){c.innerHTML+='<tr><td class="row-num">'+(i+1)+'</td><td>'+s.date+'</td><td>'+s.product+'</td><td class="cell-value cell-green">+'+s.qty+'</td></tr>'});
+}
+function fillSalePrice(){var i=document.getElementById('sale_product').value;if(i!=='')document.getElementById('sale_price').value=products[i].sale}
+function calcSaleTotal(){}
+function addSale(){
+  var pi=document.getElementById('sale_product').value,qty=+document.getElementById('sale_qty').value,price=+document.getElementById('sale_price').value,si=document.getElementById('sale_seller').value;
+  if(pi===''||!qty||!price)return;
+  var p=products[pi],profit=(price-p.purchase)*qty;
+  p.stock=Math.max(0,p.stock-qty);
+  if(si!=='')sellers[si].sales=(sellers[si].sales||0)+price*qty;
+  salesLog.push({date:new Date().toLocaleDateString(),product:p.name,qty:qty,price:price,seller:si!==''?sellers[si].name:'—',total:price*qty,profit:profit});
+  localStorage.setItem('im_products',JSON.stringify(products));localStorage.setItem('im_sellers',JSON.stringify(sellers));localStorage.setItem('im_sales',JSON.stringify(salesLog));
+  document.getElementById('sale_qty').value='';document.getElementById('sale_price').value='';refreshAll();
+}
+function renderSales(){
+  var c=document.getElementById('sales-list');c.innerHTML='';
+  salesLog.slice(-20).reverse().forEach(function(s,i){c.innerHTML+='<tr><td class="row-num">'+(i+1)+'</td><td>'+s.date+'</td><td>'+s.product+'</td><td class="cell-value">'+s.qty+'</td><td class="cell-value">'+fmt(s.price)+'</td><td>'+s.seller+'</td><td class="cell-value" style="font-weight:700">'+fmt(s.total)+'</td><td class="cell-value '+(s.profit>=0?'cell-green':'cell-red')+'">'+fmt(s.profit)+'</td></tr>'});
+}
+function closeModals(){document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('active')})}
+var sChart=null,stChart=null;
+function initCharts(){
+  var ctx1=document.getElementById('salesChart').getContext('2d'),ctx2=document.getElementById('stockChart').getContext('2d');
+  if(sChart)sChart.destroy();if(stChart)stChart.destroy();
+  var colors=['#217346','#2B579A','#ED7D31','#C00000','#548235','#4472C4','#FFC000'];
+  sChart=new Chart(ctx1,{type:'bar',data:{labels:products.map(function(p){return p.name}),datasets:[{label:'Stock',data:products.map(function(p){return p.stock}),backgroundColor:colors.slice(0,products.length),borderRadius:2,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#E8E8E8'},ticks:{color:'#888',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#888',font:{size:11}}}}}});
+  stChart=new Chart(ctx2,{type:'doughnut',data:{labels:products.map(function(p){return p.name}),datasets:[{data:products.map(function(p){return p.stock}),backgroundColor:colors.slice(0,products.length),borderWidth:1,borderColor:'#fff',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#555',padding:10,usePointStyle:true,pointStyleWidth:8,font:{size:11}}}}}});
+}
+function refreshAll(){
+  renderProducts();renderSellers();renderStockIn();renderSales();
+  document.getElementById('val-total-products').innerText=products.length;
+  var ts=sellers.reduce(function(a,s){return a+(s.sales||0)},0);
+  document.getElementById('val-total-sales').innerText=fmt(ts);
+  var tp=salesLog.reduce(function(a,s){return a+(s.profit||0)},0);
+  document.getElementById('val-total-profit').innerText=fmt(tp||ts*0.35);
+  document.getElementById('val-low-stock').innerText=products.filter(function(p){return p.stock<10}).length;
+  initCharts();populateDropdowns();
+}
+window.onload=function(){
+  document.getElementById('set-lang').value=currentLang;
+  document.getElementById('set-curr').value=currentCurr;
+  updateLocale();updateCurrency();
+};
+</script>
+</body>
+</html>
